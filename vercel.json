@@ -1,8 +1,7 @@
-{
-    "functions": {
-      "api/daily-update.js": {
-        "runtime": "edge",
-        "schedule": "30 2 * * *"
-      }
-    }
+
+  {
+      "crons": [{
+      "path": "/api/daily-update",
+      "schedule": "30 2 * * *"
+    }]
   }
