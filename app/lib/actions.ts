@@ -107,6 +107,44 @@ export async function updateInvoice(
   redirect('/dashboard/invoices');
 }
 
+export async function updateInvoiceStatus(
+  id: string,
+) {
+
+  try {
+    await sql`
+      UPDATE invoices
+      SET status = 'cancelled'
+      WHERE id = ${id}
+    `;
+  } catch (error) {
+    return { message: 'Database Error: Failed to Update Invoice Status.' };
+  }
+
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+
+export async function updateInvoiceStatusBySelection(
+  id: string,
+  status: string
+) {
+
+  try {
+    await sql`
+      UPDATE invoices
+      SET status = ${status}
+      WHERE id = ${id}
+    `;
+
+  } catch (error) {
+    return { message: 'Database Error: Failed to Update Invoice Status.' };
+  }
+
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
+}
+
 export async function deleteInvoice(id: string) {
   // throw new Error('Failed to Delete Invoice');
 
