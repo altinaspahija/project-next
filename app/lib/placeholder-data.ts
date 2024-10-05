@@ -142,6 +142,17 @@ const invoices = [
   },
 ];
 
+const invoiceAuditLogs= [
+  {
+    id: "73310722-a5d0-4123-abee-c6525084dcbd",
+    invoice_id: "0110a7aa-bd5d-428b-8111-40b1279bbe2d",
+    user_id: users[0].id,
+    user_name: users[0].name,
+    old_status: 'paid',
+    new_status: 'cancelled',
+    created_at: '2024-10-05',
+  }
+]
 const revenue = [
   { month: 'Jan', revenue: 2000 },
   { month: 'Feb', revenue: 1800 },
@@ -157,4 +168,4 @@ const revenue = [
   { month: 'Dec', revenue: 4800 },
 ];
 
-export { users, customers, invoices, revenue };
+export { users, customers, invoices, revenue, invoiceAuditLogs };

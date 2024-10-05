@@ -10,7 +10,20 @@ import {
 import Link from 'next/link';
 import { Button } from '@/app/ui/button';
 import { updateInvoice, State } from '@/app/lib/actions';
-import { useActionState } from 'react';
+import { useActionState, useEffect, useState, startTransition } from 'react';
+import { XMarkIcon } from '@heroicons/react/16/solid';
+import { useSession } from 'next-auth/react';
+import { Session } from 'next-auth'; 
+
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      email?: string | null;
+      name?: string | null;
+      id?: string | null; 
+    };
+  }
+}
 
 export default function EditInvoiceForm({
   invoice,
@@ -19,12 +32,36 @@ export default function EditInvoiceForm({
   invoice: InvoiceForm;
   customers: CustomerField[];
 }) {
+  const { data: session } = useSession();
+  const [email, setEmail] = useState<string>("");
+
+  // Set email state based on session data
+  useEffect(() => {
+    if (session?.user.email) {
+      setEmail(session.user.email);
+    }
+  }, [session]);
+
   const initialState: State = { message: null, errors: {} };
-  const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
+  const updateInvoiceWithId = (state: State, { formData, email }: { formData: FormData; email: string }) =>
+    updateInvoice(invoice.id, state, { formData, email });
+  
   const [state, formAction] = useActionState(updateInvoiceWithId, initialState);
 
+  // Handle form submission
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); 
+
+    const formData = new FormData(event.currentTarget); 
+
+    // Use `startTransition` to defer the state update
+    startTransition(() => {
+      formAction({ formData, email });
+    });
+  };
+
   return (
-    <form action={formAction}>
+    <form onSubmit={handleSubmit}>
       <div className="rounded-md bg-gray-50 p-4 md:p-6">
         {/* Customer Name */}
         <div className="mb-4">
@@ -129,6 +166,22 @@ export default function EditInvoiceForm({
                   className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
                 >
                   Paid <CheckIcon className="h-4 w-4" />
+                </label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  id="cancelled"
+                  name="status"
+                  type="radio"
+                  value="cancelled"
+                  defaultChecked={invoice.status === 'cancelled'}
+                  className="h-4 w-4 border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
+                />
+                <label
+                  htmlFor="cancelled"
+                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
+                >
+                  Cancelled <XMarkIcon className="h-4 w-4" />
                 </label>
               </div>
             </div>

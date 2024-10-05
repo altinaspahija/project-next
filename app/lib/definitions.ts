@@ -52,7 +52,7 @@ export type InvoicesTable = {
   image_url: string;
   date: string;
   amount: number;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
 };
 
 export type CustomersTableType = {
@@ -84,5 +84,16 @@ export type InvoiceForm = {
   id: string;
   customer_id: string;
   amount: number;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'paid' |  'cancelled';
 };
+
+export type InvoiceAuditLogs=
+  {
+    id: string;
+    invoice_id: string;
+    user_id: string;
+    user_name: string;
+    old_status: string;
+    new_status: string;
+    created_at: string;
+  }

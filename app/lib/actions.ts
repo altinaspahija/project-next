@@ -7,6 +7,8 @@ import { redirect } from 'next/navigation';
 import { signIn } from '@/auth';
 import { AuthError } from 'next-auth';
 
+
+
 const FormSchema = z.object({
   id: z.string(),
   customerId: z.string({
@@ -15,7 +17,7 @@ const FormSchema = z.object({
   amount: z.coerce
     .number()
     .gt(0, { message: 'Please enter an amount greater than $0.' }),
-  status: z.enum(['pending', 'paid'], {
+  status: z.enum(['pending', 'paid', 'cancelled'], {
     invalid_type_error: 'Please select an invoice status.',
   }),
   date: z.string(),
@@ -75,8 +77,9 @@ export async function createInvoice(prevState: State, formData: FormData) {
 export async function updateInvoice(
   id: string,
   prevState: State,
-  formData: FormData,
+  { formData, email }: { formData: FormData; email: string }
 ) {
+
   const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
@@ -91,20 +94,78 @@ export async function updateInvoice(
   }
 
   const { customerId, amount, status } = validatedFields.data;
-  const amountInCents = amount * 100;
+  const amountInCents = Number(amount) * 100;
 
   try {
+ 
+    const oldStatusResult = await sql`SELECT status FROM invoices WHERE id = ${id}`;
+    if (!oldStatusResult.rows.length) {
+      return { message: 'Invoice not found.' };
+    }
+    const oldStatus = oldStatusResult.rows[0].status;
+
+
+    const userResult = await sql`SELECT id, name, email FROM users WHERE email = ${email}`;
+    if (!userResult.rows.length) {
+      return { message: 'User not found.' };
+    }
+    const userId = userResult.rows[0].id;
+    const userName = userResult.rows[0].name;
+
     await sql`
       UPDATE invoices
       SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
       WHERE id = ${id}
     `;
+
+    await sql`
+      INSERT INTO invoice_audit_logs (invoice_id, user_id, user_name, old_status, new_status, created_at)
+      VALUES (${id}, ${userId}, ${userName}, ${oldStatus}, ${status}, ${new Date().toISOString()})
+    `;
+
   } catch (error) {
+    console.error('Database Error:', error);
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
 
+  // Step 6: Revalidate and redirect
   revalidatePath('/dashboard/invoices');
   redirect('/dashboard/invoices');
+}
+
+export async function restoreInvoice(
+  invoiceId: string,
+  logId: string,
+) {
+  try {
+    
+    const logResult = await sql`
+      SELECT old_status, new_status, user_id, user_name
+      FROM invoice_audit_logs
+      WHERE id = ${logId} AND invoice_id = ${invoiceId}
+    `;
+
+    if (!logResult.rows.length) {
+      return { message: 'Audit log entry not found.' };
+    }
+
+    const { old_status, user_id, user_name } = logResult.rows[0];
+
+    await sql`
+      UPDATE invoices
+      SET status = ${old_status}
+      WHERE id = ${invoiceId}
+    `;
+
+    await sql`
+      INSERT INTO invoice_audit_logs (invoice_id, user_id, user_name, old_status, new_status, created_at)
+      VALUES (${invoiceId}, ${user_id}, ${user_name}, ${old_status}, 'restored', ${new Date().toISOString()})
+    `;
+    return { message: 'Invoice restored successfully.' };
+  } catch (error) {
+    console.error('Database Error:', error);
+    return { message: 'Failed to restore invoice.' };
+  }
 }
 
 export async function updateInvoiceStatus(

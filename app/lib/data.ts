@@ -2,6 +2,7 @@ import { sql } from '@vercel/postgres';
 import {
   CustomerField,
   CustomersTableType,
+  InvoiceAuditLogs,
   InvoiceForm,
   InvoicesTable,
   LatestInvoiceRaw,
@@ -90,7 +91,7 @@ export async function fetchFilteredInvoices(
   currentPage: number,
   param: string
 ) {
-  console.log(param);
+
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   if (param == "all") {
@@ -148,7 +149,7 @@ export async function fetchFilteredInvoices(
         ORDER BY invoices.date DESC
         LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
       `;
-      console.log(invoices.rows);
+
       return invoices.rows;
     } catch (error) {
       console.error('Database Error:', error);
@@ -253,5 +254,33 @@ export async function fetchFilteredCustomers(query: string) {
   } catch (err) {
     console.error('Database Error:', err);
     throw new Error('Failed to fetch customer table.');
+  }
+}
+
+
+export async function fetchInvoiceAuditLogsById(id: string) {
+  
+  try {
+    const data = await sql<InvoiceAuditLogs>`
+      SELECT DISTINCT 
+        invoice_audit_logs.id,
+        invoice_audit_logs.invoice_id,
+        invoice_audit_logs.user_id,
+        invoice_audit_logs.user_name,
+        invoices.status AS old_status,
+        invoice_audit_logs.new_status,
+        invoice_audit_logs.created_at,
+        invoices.date
+      FROM invoice_audit_logs
+      LEFT JOIN users ON invoice_audit_logs.user_id = users.id
+      LEFT JOIN invoices ON invoice_audit_logs.invoice_id = invoices.id
+      WHERE invoice_audit_logs.invoice_id = ${id}
+      ORDER BY invoices.date DESC
+    `;
+   
+    return data.rows;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch invoice audit logs.');
   }
 }

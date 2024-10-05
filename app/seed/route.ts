@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { db } from '@vercel/postgres';
-import { invoices, customers, revenue, users } from '../lib/placeholder-data';
+import { invoices, customers, revenue, users, invoiceAuditLogs } from '../lib/placeholder-data';
 
 const client = await db.connect();
 
@@ -45,14 +45,42 @@ async function seedInvoices() {
   const insertedInvoices = await Promise.all(
     invoices.map(
       (invoice:any) => client.sql`
-        INSERT INTO invoices (id, customer_id, amount, status, date)
-        VALUES (${invoice.id},${invoice.customer_id}, ${invoice.amount}, ${invoice.status}, ${invoice.date})
+        INSERT INTO invoices (customer_id, amount, status, date)
+        VALUES (${invoice.customer_id}, ${invoice.amount}, ${invoice.status}, ${invoice.date})
         ON CONFLICT (id) DO NOTHING;
       `,
     ),
   );
 
   return insertedInvoices;
+}
+
+async function seedInvoiceAuditLogs() {
+  await client.sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+  await client.sql`
+    CREATE TABLE IF NOT EXISTS invoice_audit_logs (
+      id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+      invoice_id UUID NOT NULL,
+      user_id UUID NOT NULL,
+      user_name VARCHAR(255) NOT NULL,
+      old_status VARCHAR(255),
+      new_status VARCHAR(255) NOT NULL,
+      created_at DATE NOT NULL
+    );
+  `;
+
+  const insertedInvoiceAuditLogs = await Promise.all(
+    invoiceAuditLogs.map(
+      (log) => 
+      client.sql`
+        INSERT INTO invoice_audit_logs (invoice_id, user_id, user_name, new_status, created_at)
+        VALUES (${log.invoice_id}, ${log.user_id}, ${log.user_name}, ${log.new_status}, ${log.created_at})
+        ON CONFLICT (id) DO NOTHING;
+      `
+    ),
+  );
+  
+  return insertedInvoiceAuditLogs;
 }
 
 async function seedCustomers() {
@@ -107,6 +135,7 @@ export async function GET() {
     await seedUsers();
     await seedCustomers();
     await seedInvoices();
+    await seedInvoiceAuditLogs();
     await seedRevenue();
     await client.sql`COMMIT`;
 

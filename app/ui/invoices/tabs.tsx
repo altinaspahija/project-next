@@ -4,14 +4,18 @@ import { useEffect, useState } from "react";
 
 export default function InvoiceTabs() {
     const tabs = ['all', 'pending', 'paid', 'cancelled'];
-   const [activeStatus, setActiveStatus] = useState(() => {
-    const savedStatus = localStorage.getItem('activeStatus');
-    return savedStatus ? savedStatus : 'all';
-});
+    const [activeStatus, setActiveStatus] = useState('all');
 
-useEffect(() => {
-    localStorage.setItem('activeStatus', activeStatus);
-}, [activeStatus]);
+    useEffect(() => {
+      const savedStatus = localStorage.getItem('activeStatus');
+      if (savedStatus) {
+        setActiveStatus(savedStatus);
+      }
+    }, []); 
+  
+    useEffect(() => {
+      localStorage.setItem('activeStatus', activeStatus);
+    }, [activeStatus]);
 
     const searchParams = useSearchParams();
     const { replace } = useRouter();
