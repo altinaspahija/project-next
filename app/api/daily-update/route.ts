@@ -6,7 +6,7 @@ export  async function GET() {
         await sql`
         UPDATE invoices
         SET status = 'overdue'
-        WHERE statu = 'pending' AND date <= NOW() - INTERVAL '14 days';
+        WHERE status = 'pending' AND date <= NOW() - INTERVAL '14 days';
         `;
         return NextResponse.json({message: 'Daily Update Complete'});
     } catch (error) {
